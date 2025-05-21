@@ -1,0 +1,74 @@
+#!/bin/bash
+#SBATCH --job-name=ltx_i2v_gardenvase
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:2,VRAM:48G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=160G
+#SBATCH --time=08:00:00
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=neil.de@tum.de      
+#SBATCH --constraint="GPU_CC:8.9"
+
+# Create date-based log directory
+DATE_DIR=$(date +%Y-%m-%d)
+LOG_DIR="/home/stud/deln/storage/user/projects/LTX-Video/slurm/logs/gardenvase/${DATE_DIR}"
+mkdir -p "$LOG_DIR"
+
+# Set SLURM output and error paths
+#SBATCH --output=${LOG_DIR}/%x-%j.out
+#SBATCH --error=${LOG_DIR}/%x-%j.err
+
+# Parse command line arguments
+SEED=17  # Default seed
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --seed)
+      if [[ "$2" == "rand" ]]; then
+        SEED=$RANDOM
+        echo "Using random seed: $SEED"
+      else
+        SEED="$2"
+      fi
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+
+# --- Conda env ---
+eval "$(/storage/user/deln/miniconda3/bin/conda shell.bash hook)"
+conda activate ltx
+
+echo "Host: $(hostname)"
+echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+date
+
+# Set PyTorch memory configuration
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+# paths
+PROJECT_DIR=$PWD
+IMG_PATH=$PROJECT_DIR/images/gardenvase.png
+PROMPT="Vase starts flying up vertically. Static camera, fixed view-point."
+TAG=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_')
+
+RUNID=$(date +%Y%m%d_%H%M%S)
+OUTDIR=$PROJECT_DIR/outputs/gardenvase/${DATE_DIR}/$RUNID-$SEED
+mkdir -p "$OUTDIR"
+
+# ----------------- Run -----------------
+srun python inference.py \
+    --prompt "$PROMPT" \
+    --conditioning_media_paths "$IMG_PATH" \
+    --conditioning_start_frames 0 \
+    --height 704 \
+    --width 1216 \
+    --num_frames 121 \
+    --seed "$SEED" \
+    --pipeline_config configs/ltxv-2b-0.9.6-distilled.yaml \
+    --output_path "$OUTDIR" \
+    --device cuda:0 \
+    --offload_to_cpu
