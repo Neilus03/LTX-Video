@@ -2,21 +2,23 @@
 #SBATCH --job-name=ltx_i2v_gardenvase
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:2,VRAM:48G
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=6
 #SBATCH --mem=160G
 #SBATCH --time=08:00:00
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=neil.de@tum.de      
+#SBATCH --mail-user=neil.de@tum.de
 #SBATCH --constraint="GPU_CC:8.9"
+#SBATCH --output=slurm-%j.out
+#SBATCH --error=slurm-%j.err
 
 # Create date-based log directory
 DATE_DIR=$(date +%Y-%m-%d)
 LOG_DIR="/home/stud/deln/storage/user/projects/LTX-Video/slurm/logs/gardenvase/${DATE_DIR}"
 mkdir -p "$LOG_DIR"
 
-# Set SLURM output and error paths
-#SBATCH --output=${LOG_DIR}/%x-%j.out
-#SBATCH --error=${LOG_DIR}/%x-%j.err
+# Move SLURM output files to the log directory
+mv "slurm-${SLURM_JOB_ID}.out" "${LOG_DIR}/ltx_i2v_gardenvase-${SLURM_JOB_ID}.out"
+mv "slurm-${SLURM_JOB_ID}.err" "${LOG_DIR}/ltx_i2v_gardenvase-${SLURM_JOB_ID}.err"
 
 # Parse command line arguments
 SEED=17  # Default seed
@@ -60,7 +62,10 @@ OUTDIR=$PROJECT_DIR/outputs/gardenvase/${DATE_DIR}/$RUNID-$SEED
 mkdir -p "$OUTDIR"
 
 # ----------------- Run -----------------
-srun python inference.py \
+echo "Starting execution at: $(date)"
+start_time=$(date +%s)
+
+srun time -v python inference.py \
     --prompt "$PROMPT" \
     --conditioning_media_paths "$IMG_PATH" \
     --conditioning_start_frames 0 \
@@ -72,3 +77,8 @@ srun python inference.py \
     --output_path "$OUTDIR" \
     --device cuda:0 \
     --offload_to_cpu
+
+end_time=$(date +%s)
+duration=$((end_time - start_time))
+echo "Finished execution at: $(date)"
+echo "Total execution time: ${duration} seconds ($(date -u -d @${duration} +'%H:%M:%S'))"

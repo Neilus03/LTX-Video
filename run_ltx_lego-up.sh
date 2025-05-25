@@ -1,22 +1,24 @@
 #!/bin/bash
 #SBATCH --job-name=ltx_i2v_lego-up
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:2,VRAM:80G
-#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:2,VRAM:48G
+#SBATCH --cpus-per-task=6
 #SBATCH --mem=160G
 #SBATCH --time=08:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=neil.de@tum.de
-
+#SBATCH --constraint="GPU_CC:8.9"
+#SBATCH --output=slurm-%j.out
+#SBATCH --error=slurm-%j.err
 
 # Create date-based log directory
 DATE_DIR=$(date +%Y-%m-%d)
 LOG_DIR="/home/stud/deln/storage/user/projects/LTX-Video/slurm/logs/lego-up/${DATE_DIR}"
 mkdir -p "$LOG_DIR"
 
-# Set SLURM output and error paths
-#SBATCH --output=${LOG_DIR}/%x-%j.out
-#SBATCH --error=${LOG_DIR}/%x-%j.err
+# Move SLURM output files to the log directory
+mv "slurm-${SLURM_JOB_ID}.out" "${LOG_DIR}/ltx_i2v_lego-up-${SLURM_JOB_ID}.out"
+mv "slurm-${SLURM_JOB_ID}.err" "${LOG_DIR}/ltx_i2v_lego-up-${SLURM_JOB_ID}.err"
 
 # Parse command line arguments
 SEED=17  # Default seed
@@ -51,7 +53,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # paths
 PROJECT_DIR=$PWD
 IMG_PATH=$PROJECT_DIR/images/lego-up.png
-PROMPT="lego bulldozer does a wheelie. Static camera, fixed view-point."
+PROMPT="toy lego bulldozer drifts generating a vortex of dust."
 TAG=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_')
 
 RUNID=$(date +%Y%m%d_%H%M%S)
@@ -59,7 +61,10 @@ OUTDIR=$PROJECT_DIR/outputs/lego-up/${DATE_DIR}/$RUNID-$SEED
 mkdir -p "$OUTDIR"
 
 # ----------------- Run -----------------
-srun python inference.py \
+echo "Starting execution at: $(date)"
+start_time=$(date +%s)
+
+srun time -v python inference.py \
     --prompt "$PROMPT" \
     --conditioning_media_paths "$IMG_PATH" \
     --conditioning_start_frames 0 \
@@ -67,7 +72,12 @@ srun python inference.py \
     --width 1216 \
     --num_frames 121 \
     --seed "$SEED" \
-    --pipeline_config configs/ltxv-13b-0.9.7-distilled.yaml \
+    --pipeline_config configs/ltxv-2b-0.9.6-distilled.yaml \
     --output_path "$OUTDIR" \
     --device cuda:0 \
     --offload_to_cpu
+
+end_time=$(date +%s)
+duration=$((end_time - start_time))
+echo "Finished execution at: $(date)"
+echo "Total execution time: ${duration} seconds ($(date -u -d @${duration} +'%H:%M:%S'))"
