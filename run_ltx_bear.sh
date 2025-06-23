@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=ltx_i2v_bear
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:2,VRAM:48G
-#SBATCH --cpus-per-task=6
-#SBATCH --mem=160G
+#SBATCH --gres=gpu:1,VRAM:48G
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=80G
 #SBATCH --time=08:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=neil.de@tum.de
@@ -54,7 +54,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # paths
 PROJECT_DIR=$PWD
 IMG_PATH=$PROJECT_DIR/images/bear.png
-PROMPT="bear statue spins around."
+PROMPT="bear statue lifts its left paw first"
 TAG=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_')
 
 RUNID=$(date +%Y%m%d_%H%M%S)
@@ -71,7 +71,7 @@ srun time -v python inference.py \
     --conditioning_start_frames 0 \
     --height 704 \
     --width 1216 \
-    --num_frames 121 \
+    --num_frames 32 \
     --seed "$SEED" \
     --pipeline_config configs/ltxv-2b-0.9.6-distilled.yaml \
     --output_path "$OUTDIR" \

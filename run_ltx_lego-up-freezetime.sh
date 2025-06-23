@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ltx_i2v_flowerbed
+#SBATCH --job-name=ltx_i2v_lego-up_freezetime
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1,VRAM:48G
 #SBATCH --cpus-per-task=4
@@ -13,12 +13,12 @@
 
 # Create date-based log directory
 DATE_DIR=$(date +%Y-%m-%d)
-LOG_DIR="/home/stud/deln/storage/user/projects/LTX-Video/slurm/logs/flowerbed/${DATE_DIR}"
+LOG_DIR="/home/stud/deln/storage/user/projects/LTX-Video/slurm/logs/freezetime/lego-up/${DATE_DIR}"
 mkdir -p "$LOG_DIR"
 
 # Move SLURM output files to the log directory
-mv "slurm-${SLURM_JOB_ID}.out" "${LOG_DIR}/ltx_i2v_flowerbed-${SLURM_JOB_ID}.out"
-mv "slurm-${SLURM_JOB_ID}.err" "${LOG_DIR}/ltx_i2v_flowerbed-${SLURM_JOB_ID}.err"
+mv "slurm-${SLURM_JOB_ID}.out" "${LOG_DIR}/ltx_i2v_lego-up-freezetime-${SLURM_JOB_ID}.out"
+mv "slurm-${SLURM_JOB_ID}.err" "${LOG_DIR}/ltx_i2v_lego-up-freezetime-${SLURM_JOB_ID}.err"
 
 # Parse command line arguments
 SEED=17  # Default seed
@@ -52,12 +52,12 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # paths
 PROJECT_DIR=$PWD
-IMG_PATH=$PROJECT_DIR/images/flowerbed.png
-PROMPT="Flowers grow higher than the trees. Static camera, fixed view-point."
+IMG_PATH=$PROJECT_DIR/images/lego-up.png
+PROMPT="Camera circulating 360 degrees around the lego bulldozer. Time elapse. lego bulldozer is frozen in time. Freeze-time video, lego bulldozer showcases no movement."
 TAG=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_')
 
 RUNID=$(date +%Y%m%d_%H%M%S)
-OUTDIR=$PROJECT_DIR/outputs/flowerbed/${DATE_DIR}/$RUNID-$SEED
+OUTDIR=$PROJECT_DIR/outputs/freezetime/lego-up/${DATE_DIR}/$RUNID-$SEED
 mkdir -p "$OUTDIR"
 
 # ----------------- Run -----------------

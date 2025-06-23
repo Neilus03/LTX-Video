@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ltx_i2v_flowerbed
+#SBATCH --job-name=ltx_i2v_gardenvase_freezetime
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1,VRAM:48G
 #SBATCH --cpus-per-task=4
@@ -13,12 +13,12 @@
 
 # Create date-based log directory
 DATE_DIR=$(date +%Y-%m-%d)
-LOG_DIR="/home/stud/deln/storage/user/projects/LTX-Video/slurm/logs/flowerbed/${DATE_DIR}"
+LOG_DIR="/home/stud/deln/storage/user/projects/LTX-Video/slurm/logs/freezetime/gardenvase/${DATE_DIR}"
 mkdir -p "$LOG_DIR"
 
 # Move SLURM output files to the log directory
-mv "slurm-${SLURM_JOB_ID}.out" "${LOG_DIR}/ltx_i2v_flowerbed-${SLURM_JOB_ID}.out"
-mv "slurm-${SLURM_JOB_ID}.err" "${LOG_DIR}/ltx_i2v_flowerbed-${SLURM_JOB_ID}.err"
+mv "slurm-${SLURM_JOB_ID}.out" "${LOG_DIR}/ltx_i2v_gardenvase-freezetime-${SLURM_JOB_ID}.out"
+mv "slurm-${SLURM_JOB_ID}.err" "${LOG_DIR}/ltx_i2v_gardenvase-freezetime-${SLURM_JOB_ID}.err"
 
 # Parse command line arguments
 SEED=17  # Default seed
@@ -39,6 +39,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+
 # --- Conda env ---
 eval "$(/storage/user/deln/miniconda3/bin/conda shell.bash hook)"
 conda activate ltx
@@ -52,12 +53,12 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # paths
 PROJECT_DIR=$PWD
-IMG_PATH=$PROJECT_DIR/images/flowerbed.png
-PROMPT="Flowers grow higher than the trees. Static camera, fixed view-point."
+IMG_PATH=$PROJECT_DIR/images/gardenvase.png
+PROMPT="Camera circulating 360 degrees around the garden vase. Time elapse. garden vase is frozen in time. Freeze-time video, garden vase showcases no movement."
 TAG=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_')
 
 RUNID=$(date +%Y%m%d_%H%M%S)
-OUTDIR=$PROJECT_DIR/outputs/flowerbed/${DATE_DIR}/$RUNID-$SEED
+OUTDIR=$PROJECT_DIR/outputs/freezetime/gardenvase/${DATE_DIR}/$RUNID-$SEED
 mkdir -p "$OUTDIR"
 
 # ----------------- Run -----------------

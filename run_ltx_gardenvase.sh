@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=ltx_i2v_gardenvase
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:2,VRAM:48G
-#SBATCH --cpus-per-task=6
-#SBATCH --mem=160G
+#SBATCH --gres=gpu:1,VRAM:48G
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=80G
 #SBATCH --time=08:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=neil.de@tum.de
@@ -54,7 +54,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # paths
 PROJECT_DIR=$PWD
 IMG_PATH=$PROJECT_DIR/images/gardenvase.png
-PROMPT="Vase starts flying up vertically. Static camera, fixed view-point."
+PROMPT="Vase falls down and breaks into pieces due to strong wind. Static camera, fixed view-point."
 TAG=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_')
 
 RUNID=$(date +%Y%m%d_%H%M%S)
