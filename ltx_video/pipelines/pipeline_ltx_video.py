@@ -215,6 +215,48 @@ class ConditioningItem:
     media_y: Optional[int] = None
 
 
+def print_tensor_stats(tensor, name, print_values=False):
+    """Prints statistics of a tensor."""
+    if not isinstance(tensor, torch.Tensor):
+        print(f"\n--- {name} is not a tensor (type: {type(tensor)}) ---")
+        return
+
+    print(f"\n--- Stats for {name} ---")
+    print(f"  Shape: {tensor.shape}")
+    print(f"  dtype: {tensor.dtype}")
+    print(f"  Device: {tensor.device}")
+
+    if tensor.numel() == 0:
+        print("  Tensor is empty.")
+        print("-" * (20 + len(name)))
+        return
+
+    # Create a clone on CPU to not interfere with GPU computations
+    tensor_cpu = tensor.detach().clone().to("cpu")
+
+    has_nan = torch.isnan(tensor_cpu).any()
+    has_inf = torch.isinf(tensor_cpu).any()
+    print(f"  Has NaN: {has_nan.item()}")
+    print(f"  Has Inf: {has_inf.item()}")
+
+    if tensor.is_floating_point():
+        tensor_cpu = tensor_cpu.float()
+        if not has_nan and not has_inf:
+            print(f"  Min: {tensor_cpu.min().item():.6f}")
+            print(f"  Max: {tensor_cpu.max().item():.6f}")
+            print(f"  Mean: {tensor_cpu.mean().item():.6f}")
+            print(f"  Std: {tensor_cpu.std().item():.6f}")
+        if print_values:
+            print(f"  Values: \n{tensor_cpu}")
+    else:  # Integer types
+        print(f"  Min: {tensor_cpu.min().item()}")
+        print(f"  Max: {tensor_cpu.max().item()}")
+        if print_values:
+            print(f"  Values: \n{tensor_cpu}")
+
+    print("-" * (20 + len(name)))
+
+
 class LTXVideoPipeline(DiffusionPipeline):
     r"""
     Pipeline for text-to-image generation using LTX-Video.
@@ -1146,6 +1188,7 @@ class LTXVideoPipeline(DiffusionPipeline):
                         generator,
                     )
 
+                print_tensor_stats(latents, f"Latents at start of step {i}")
                 latent_model_input = (
                     torch.cat([latents] * num_conds) if num_conds > 1 else latents
                 )
@@ -1190,6 +1233,9 @@ class LTXVideoPipeline(DiffusionPipeline):
                     context_manager = nullcontext()  # Dummy context manager
 
                 # predict noise model_output
+                print_tensor_stats(
+                    latent_model_input, f"Transformer input at step {i}"
+                )
                 with context_manager:
                     noise_pred = self.transformer(
                         latent_model_input.to(self.transformer.dtype),
@@ -1208,6 +1254,7 @@ class LTXVideoPipeline(DiffusionPipeline):
                         return_dict=False,
                     )[0]
 
+                print_tensor_stats(noise_pred, f"Transformer output at step {i}")
                 # perform guidance
                 if do_spatio_temporal_guidance:
                     noise_pred_text, noise_pred_text_perturb = noise_pred.chunk(
@@ -1272,6 +1319,7 @@ class LTXVideoPipeline(DiffusionPipeline):
                     stochastic_sampling=stochastic_sampling,
                 )
 
+                print_tensor_stats(latents, f"Latents at end of step {i}")
                 # call the callback, if provided
                 if i == len(timesteps) - 1 or (
                     (i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0
@@ -1288,6 +1336,7 @@ class LTXVideoPipeline(DiffusionPipeline):
 
         # Remove the added conditioning latents
         latents = latents[:, num_cond_latents:]
+        print_tensor_stats(latents, "Latents after removing conditioning part")
 
         latents = self.patchifier.unpatchify(
             latents=latents,
@@ -1296,6 +1345,7 @@ class LTXVideoPipeline(DiffusionPipeline):
             out_channels=self.transformer.in_channels
             // math.prod(self.patchifier.patch_size),
         )
+        print_tensor_stats(latents, "Latents after unpatchify")
         if output_type != "latent":
             if self.vae.decoder.timestep_conditioning:
                 noise = torch.randn_like(latents)
@@ -1315,6 +1365,7 @@ class LTXVideoPipeline(DiffusionPipeline):
                 )
             else:
                 decode_timestep = None
+            print_tensor_stats(latents, "Latents before VAE decode")
             image = vae_decode(
                 latents,
                 self.vae,
@@ -1322,8 +1373,10 @@ class LTXVideoPipeline(DiffusionPipeline):
                 vae_per_channel_normalize=kwargs["vae_per_channel_normalize"],
                 timestep=decode_timestep,
             )
+            print_tensor_stats(image, "Image after VAE decode")
 
             image = self.image_processor.postprocess(image, output_type=output_type)
+            print_tensor_stats(image, "Image after postprocessing")
 
         else:
             image = latents
@@ -1433,6 +1486,7 @@ class LTXVideoPipeline(DiffusionPipeline):
                     conditioning_item, height, width
                 )
                 media_item = conditioning_item.media_item
+                print_tensor_stats(media_item, "Conditioning media item")
                 media_frame_number = conditioning_item.media_frame_number
                 strength = conditioning_item.conditioning_strength
                 assert media_item.ndim == 5  # (b, c, f, h, w)
@@ -1452,6 +1506,9 @@ class LTXVideoPipeline(DiffusionPipeline):
                     self.vae,
                     vae_per_channel_normalize=vae_per_channel_normalize,
                 ).to(dtype=init_latents.dtype)
+                print_tensor_stats(
+                    media_item_latents, "Conditioning media item latents"
+                )
 
                 # Handle the different conditioning cases
                 if media_frame_number == 0:
@@ -1532,9 +1589,11 @@ class LTXVideoPipeline(DiffusionPipeline):
                         extra_conditioning_mask.append(conditioning_mask)
 
         # Patchify the updated latents and calculate their pixel coordinates
+        print_tensor_stats(init_latents, "Latents before patchify in prepare_conditioning")
         init_latents, init_latent_coords = self.patchifier.patchify(
             latents=init_latents
         )
+        print_tensor_stats(init_latents, "Latents after patchify in prepare_conditioning")
         init_pixel_coords = latent_to_pixel_coords(
             init_latent_coords,
             self.vae,
@@ -1570,6 +1629,9 @@ class LTXVideoPipeline(DiffusionPipeline):
                     :, :-extra_conditioning_num_latents
                 ]
 
+        print_tensor_stats(
+            init_latents, "Final latents from prepare_conditioning"
+        )
         return (
             init_latents,
             init_pixel_coords,
@@ -1843,3 +1905,5 @@ class LTXMultiScalePipeline:
             result.images = videos
 
         return result
+
+
